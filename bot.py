@@ -47,8 +47,11 @@ class sc2Bot(sc2.BotAI):
             # build assimilator on top of the vaspene
             await self.do(worker.build(ASSIMILATOR, vaspene))
 
+####################### RUNNER ###############################
 
 run_game(maps.get("AbyssalReefLE"), [
     Bot(Race.Protoss, sc2Bot()),
     Computer(Race.Terran, Difficulty.Easy)
 ], realtime=False)
+
+###############################################################
