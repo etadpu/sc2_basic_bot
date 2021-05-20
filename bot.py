@@ -1,7 +1,9 @@
 import sc2
 from sc2 import run_game, maps, Race, Difficulty
+from sc2.game_data import GameData
 from sc2.player import Bot, Computer
-from sc2.constants import NEXUS, PROBE, PYLON, ASSIMILATOR
+from sc2.constants import NEXUS, PROBE, PYLON, ASSIMILATOR, GATEWAY, \
+   CYBERNETICSCORE
 
 
 class sc2Bot(sc2.BotAI):
@@ -9,12 +11,15 @@ class sc2Bot(sc2.BotAI):
   ####################### STEPPER ###############################
     
     async def on_step(self, iteration):
-        # what to do every step
-        await self.distribute_workers()  # in sc2/bot_ai.py
+        # distribute_workers() is ready made from bot_ai.py
+        await self.distribute_workers() 
         await self.build_workers()
         await self.build_pylons()
         await self.build_assimilators()
-        
+        await self.go_expand()
+        await self.build_fighter_unit_buildings()
+        #await self.build_gateways(4)
+
   ###############################################################
 
 
@@ -27,15 +32,16 @@ class sc2Bot(sc2.BotAI):
     
     async def build_pylons(self):
       if self.supply_left < 6 and not self.already_pending(PYLON) and self.can_afford(PYLON):
-        # nexuses = self.units(NEXUS).ready  // nexus basically always exists
-        nexuses = self.units(NEXUS).ready
-        if nexuses.exists:
-          await self.build(PYLON, near=nexuses.first)
+        # nexus = self.units(NEXUS).ready  // nexus basically always exists
+        nexus = self.units(NEXUS).ready
+        if nexus.exists:
+          await self.build(PYLON, near=nexus.first)
+
 
     async def build_assimilators(self):
-      for nexuses in self.units(NEXUS).ready:
+      for nexus in self.units(NEXUS).ready:
         # all vaspene closer than 20 from nexus
-        vaspenes = self.state.vespene_geyser.closer_than(20.0, nexuses)
+        vaspenes = self.state.vespene_geyser.closer_than(16.0, nexus)
         for vaspene in vaspenes:
           # if we can afford and as long as there are no assimilators closer than 1 from the current vaspene
           # meaning, assimilator on top of vaspene 
@@ -46,6 +52,40 @@ class sc2Bot(sc2.BotAI):
               break
             # build assimilator on top of the vaspene
             await self.do(worker.build(ASSIMILATOR, vaspene))
+
+
+    async def go_expand(self):
+      if self.units(NEXUS).amount < 3 and self.can_afford(NEXUS):
+        # most things are already handled for us with expand_now()
+        await self.expand_now()
+
+
+# TODO fix building placements
+    async def build_fighter_unit_buildings(self):
+      if self.units(PYLON).ready.exists:
+        pylon = self.units(PYLON).ready.random
+        if self.units(GATEWAY).ready.exists:
+          if \
+            not self.units(CYBERNETICSCORE) \
+              and not self.already_pending(CYBERNETICSCORE)\
+                 and self.can_afford(CYBERNETICSCORE):
+            await self.build(CYBERNETICSCORE, near=pylon)
+        else:
+          if self.can_afford(GATEWAY) and not self.already_pending(GATEWAY):
+            await self.build(GATEWAY, near=pylon)
+
+
+# TODO fix positions of buildings. its clogging up the mining area
+    async def build_gateways(self, number_of_gateways):
+      # Needed to avoid crash
+      if self.units(PYLON).ready.exists:
+        pylon = self.units(PYLON).ready.random
+        # Gotta check already pending, otherwise we crash and burn
+        if self.units(GATEWAY).amount < number_of_gateways and self.can_afford(GATEWAY) and self.already_pending(GATEWAY) < number_of_gateways:
+          await self.build(GATEWAY, near=pylon)
+
+            
+            
 
 ####################### RUNNER ###############################
 
