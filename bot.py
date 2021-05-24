@@ -3,7 +3,7 @@ from sc2 import run_game, maps, Race, Difficulty
 from sc2.game_data import GameData
 from sc2.player import Bot, Computer
 from sc2.constants import NEXUS, PROBE, PYLON, ASSIMILATOR, GATEWAY, \
-   CYBERNETICSCORE
+   CYBERNETICSCORE, STALKER
 
 
 class sc2Bot(sc2.BotAI):
@@ -17,15 +17,18 @@ class sc2Bot(sc2.BotAI):
         await self.build_pylons()
         await self.build_assimilators()
         await self.go_expand()
-        await self.build_fighter_unit_buildings()
+        #await self.build_fighter_unit_buildings()
         #await self.build_gateways(4)
+        await self.build_one_gateway()
+        await self.build_cyberneticscore()
+        await self.build_stalkers()
 
   ###############################################################
 
 
     async def build_workers(self):
         # nexus = command center
-        for nexus in self.units(NEXUS).ready.noqueue:
+        for nexus in self.units(NEXUS).ready.idle:
             if self.can_afford(PROBE):
                 await self.do(nexus.train(PROBE))
 
@@ -76,15 +79,34 @@ class sc2Bot(sc2.BotAI):
 
 
 # TODO fix positions of buildings. its clogging up the mining area
+# TODO refactor getPylon
     async def build_gateways(self, number_of_gateways):
       # Needed to avoid crash
-      if self.units(PYLON).ready.exists:
+      if self.units(PYLON).ready.exists and self.units(GATEWAY).amount < number_of_gateways and self.can_afford(GATEWAY) and self.already_pending(GATEWAY) < number_of_gateways:
+        # Get a random pylon (from our already built pylons)
         pylon = self.units(PYLON).ready.random
         # Gotta check already pending, otherwise we crash and burn
-        if self.units(GATEWAY).amount < number_of_gateways and self.can_afford(GATEWAY) and self.already_pending(GATEWAY) < number_of_gateways:
-          await self.build(GATEWAY, near=pylon)
+        await self.build(GATEWAY, near=pylon)
+    
+    
+    async def build_one_gateway(self):
+      if self.units(PYLON).ready.exists and not self.units(GATEWAY).exists and self.can_afford(GATEWAY) and not self.already_pending(GATEWAY):
+        pylon = self.units(PYLON).ready.random
+        await self.build(GATEWAY, near=pylon)
 
-            
+
+    async def build_cyberneticscore(self):
+      if self.units(GATEWAY).ready.exists and self.units(PYLON).ready.exists and not self.units(CYBERNETICSCORE) and self.can_afford(CYBERNETICSCORE) and not self.already_pending(CYBERNETICSCORE):
+        pylon = self.units(PYLON).ready.random
+        await self.build(CYBERNETICSCORE, near=pylon)
+
+    async def build_stalkers(self):
+      for gateway in self.units(GATEWAY).ready.idle:
+        if self.units(CYBERNETICSCORE).ready.exists and self.can_afford(STALKER) and self.supply_left > 0:
+          await self.do(gateway.train(STALKER))
+
+
+
             
 
 ####################### RUNNER ###############################
