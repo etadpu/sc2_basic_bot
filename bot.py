@@ -4,7 +4,7 @@ from sc2.game_data import GameData
 from sc2.player import Bot, Computer
 from sc2.constants import NEXUS, PROBE, PYLON, ASSIMILATOR, GATEWAY, \
    CYBERNETICSCORE, STALKER
-
+import random
 
 class sc2Bot(sc2.BotAI):
 
@@ -22,6 +22,7 @@ class sc2Bot(sc2.BotAI):
         await self.build_one_gateway()
         await self.build_cyberneticscore()
         await self.build_stalkers()
+        await self.attack()
 
   ###############################################################
 
@@ -29,7 +30,7 @@ class sc2Bot(sc2.BotAI):
     async def build_workers(self):
         # nexus = command center
         for nexus in self.units(NEXUS).ready.idle:
-            if self.can_afford(PROBE):
+            if self.can_afford(PROBE) and self.units(PROBE).amount < 50:
                 await self.do(nexus.train(PROBE))
 
     
@@ -100,14 +101,18 @@ class sc2Bot(sc2.BotAI):
         pylon = self.units(PYLON).ready.random
         await self.build(CYBERNETICSCORE, near=pylon)
 
+
     async def build_stalkers(self):
       for gateway in self.units(GATEWAY).ready.idle:
         if self.units(CYBERNETICSCORE).ready.exists and self.can_afford(STALKER) and self.supply_left > 0:
           await self.do(gateway.train(STALKER))
 
 
+    async def attack(self):
+      if self.units(STALKER).amount > 5 and len(self.known_enemy_units) > 0:
+        for s in self.units(STALKER).idle:
+          await self.do(s.attack(random.choice(self.known_enemy_units)))
 
-            
 
 ####################### RUNNER ###############################
 
